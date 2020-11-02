@@ -17,3 +17,19 @@ const kCalculateLabel =
 const kIconSize = 80.0;
 const kIconVerticalSpace = 15.0;
 const kLabelTextStyle = TextStyle(color: Color(0xFF8D8E98), fontSize: 18.0);
+
+InputDecoration getDecoration(text) {
+  return InputDecoration(
+    fillColor: Colors.grey,
+    hintText: text,
+    hintStyle: TextStyle(color: Colors.teal.shade100),
+  );
+}
+
+const kButtonTextStyle = TextStyle(
+  fontSize: 30.0,
+  fontFamily: 'Spartan MB',
+);
+
+const kPrimaryColor = Color(0xFF6F35A5);
+const kPrimaryLightColor = Color(0xFFF1E6FF);

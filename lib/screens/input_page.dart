@@ -1,7 +1,12 @@
 import 'package:bmi_calculator/components/reusable_card.dart';
+import 'package:bmi_calculator/screens/history.dart';
+import 'package:bmi_calculator/screens/login/login_screen.dart';
 import 'package:bmi_calculator/screens/result_page.dart';
+import 'package:bmi_calculator/service/bmi.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 
 import '../calculator_brain.dart';
 import '../components/icon_content.dart';
@@ -17,15 +22,77 @@ class InputPage extends StatefulWidget {
 
 class _InputPageState extends State<InputPage> {
   Gender selectedGender;
-  int height = 180;
-  int weight = 60;
+  int height = 4;
+  int weight = 130;
   int age = 19;
+  String jwt;
+  bool jwtHasExpired;
+  int responseCode;
+
+  final storage = FlutterSecureStorage();
+
+  @override
+  void initState() {
+    super.initState();
+    getTokenData();
+  }
+
+  void getTokenData() async {
+    jwt = await storage.read(key: "jwt");
+    jwtHasExpired = JwtDecoder.isExpired(jwt);
+    // print(jwtHasExpired);
+    // Duration tokenTime = JwtDecoder.getTokenTime(jwt);
+    // // 15
+    // print(tokenTime.inSeconds);
+  }
+
+  void save(bmiValue, bmiStatus) async {
+    BMI bmiObj = BMI(
+      weight: weight,
+      height: height,
+      status: bmiStatus,
+      bmi: bmiValue,
+    );
+    responseCode = await bmiObj.saveBMI();
+    print(responseCode);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
           title: Text('BMI CALCULATOR'),
+          leading: IconButton(
+            icon: const Icon(FontAwesomeIcons.history),
+            tooltip: 'History',
+            hoverColor: Colors.teal,
+            onPressed: () {
+              if (jwt != null && !jwtHasExpired) {
+                Navigator.push(context, MaterialPageRoute(builder: (context) {
+                  return HistoryScreen();
+                }));
+              } else {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LoginScreen(),
+                    ));
+              }
+            },
+          ),
+          actions: <Widget>[
+            IconButton(
+              icon: const Icon(FontAwesomeIcons.signOutAlt),
+              tooltip: 'Sign Out',
+              color: Colors.white,
+              onPressed: () {
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (context) {
+                  return LoginScreen();
+                }));
+              },
+            ),
+          ],
         ),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -74,7 +141,7 @@ class _InputPageState extends State<InputPage> {
                     textBaseline: TextBaseline.alphabetic,
                     children: <Widget>[
                       Text(height.toString(), style: kNumberTextStyle),
-                      Text("cm", style: kLabelTextStyle)
+                      Text("ft", style: kLabelTextStyle)
                     ],
                   ),
                   SliderTheme(
@@ -88,8 +155,8 @@ class _InputPageState extends State<InputPage> {
                             RoundSliderOverlayShape(overlayRadius: 30.0)),
                     child: Slider(
                         value: height.toDouble(),
-                        min: 120.0,
-                        max: 220.0,
+                        min: 1.0,
+                        max: 7.0,
                         // activeColor: Color(0xFFEB1555),
                         // activeColor: Colors.white,
                         onChanged: (double newValue) =>
@@ -174,16 +241,31 @@ class _InputPageState extends State<InputPage> {
                 CalculatorBrain calc =
                     CalculatorBrain(height: height, weight: weight);
                 String result = calc.calculateBM();
-
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ShowResult(
-                        bmiResult: result,
-                        resultText: calc.getResult(),
-                        interpretation: calc.getInterpretation(),
-                      ),
-                    ));
+                print(jwtHasExpired);
+                if (jwt != null && !jwtHasExpired) {
+                  String bmiStatus = calc.getResult();
+                  String interpretation = calc.getInterpretation();
+                  double bmiValue = calc.getBMIValue();
+                  print("calc.bmiStatus() $bmiStatus");
+                  print("calc.bmiValue() $bmiValue");
+                  print("calc.interpretation() $interpretation");
+                  save(double.parse(result), bmiStatus);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ShowResult(
+                          bmiResult: result,
+                          resultText: bmiStatus,
+                          interpretation: interpretation,
+                        ),
+                      ));
+                } else {
+                  Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => LoginScreen(),
+                      ));
+                }
               },
             )
           ],
